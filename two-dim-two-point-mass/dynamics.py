@@ -12,9 +12,9 @@ class TwoDimPointMass(BaseEnv):
         self.pos = BaseSystem(shape=(2,1))
         self.vel = BaseSystem(shape=(2,1))
 
-    def set_dot(self, u):
+    def set_dot(self, u, disturbance):
         self.pos.dot = self.vel.state
-        self.vel.dot = u
+        self.vel.dot = u + disturbance
 
 
 class EnvTwoDimPointMass(BaseEnv, gym.Env):
@@ -41,15 +41,18 @@ class EnvTwoDimPointMass(BaseEnv, gym.Env):
         return obs
 
     def step(self, action):
+        pre_obs = self.observe()
         u = np.vstack(action)
         *_, done = self.update(u=u)
-        obs = self.observe()
-        reward = self.get_reward(u)
+        next_obs = self.observe()
+        reward = self.get_reward(pre_obs, next_obs, u)
         info = {}
-        return obs, reward, done, info
+        return next_obs, reward, done, info
 
     def set_dot(self, t, u):
-        self.plant.set_dot(u)
+        disturbance = random.normal(0, 0.1, (2,1))
+        # disturbance = np.vstack((0., 0.))
+        self.plant.set_dot(u, disturbance)
         x = np.float32(self.plant.state)
         pos = x[0:2]
         vel = x[2:4]
@@ -60,11 +63,11 @@ class EnvTwoDimPointMass(BaseEnv, gym.Env):
         obs = np.float32(self.plant.state)
         return obs
 
-    def get_reward(self, u):
+    def get_reward(self, pre_obs, next_obs, u):
         # reward = self.L2norm()
-        # reward = self.quadratic()
+        # reward = self.quadratic(u)
         # reward = self.exponential_quadratic()
-        reward = self.lyapunov()
+        reward = self.lyapunov(pre_obs, next_obs)
         # reward = self.exponential_lyapunov()
 
         return reward
@@ -77,7 +80,7 @@ class EnvTwoDimPointMass(BaseEnv, gym.Env):
             - 1e-5 * np.linalg.norm(vel).item()
         return reward
 
-    def quadratic(self):
+    def quadratic(self, u):
         x = np.float32(self.plant.state)
         reward = np.float32(
             (-x.T@np.diag([1, 1, 0, 0])@x 
@@ -97,15 +100,21 @@ class EnvTwoDimPointMass(BaseEnv, gym.Env):
         )
         return reward
 
-    def lyapunov(self):
-        x = np.float32(self.plant.state)
-        pos = x[0:2]
-        vel = x[2:4]
-        lyap_dot = pos.squeeze() @ vel.squeeze()
-        if lyap_dot <= 0:
+    def lyapunov(self, pre_obs, next_obs):
+        del_lyap = next_obs[0:2].squeeze() @ next_obs[0:2].squeeze() \
+            - pre_obs[0:2].squeeze() @ pre_obs[0:2].squeeze()
+        if del_lyap <= 0:
             reward = -1
         else:
             reward = -10
+        # x = np.float32(self.plant.state)
+        # pos = x[0:2]
+        # vel = x[2:4]
+        # lyap_dot = pos.squeeze() @ vel.squeeze()
+        # if lyap_dot <= 0:
+        #     reward = -1
+        # else:
+        #     reward = -10
         return reward
 
     def exponential_lyapunov(self):
