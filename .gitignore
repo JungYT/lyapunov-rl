@@ -1,5 +1,2 @@
-two-dim-two-point-mass/ray_results/
-two-dim-two-point-mass/tensorboard_data/
-two-dim-two-point-mass/__pycache__/
-3DOF/ray_results/
-3DOF/__pycache__/
+ray_results/
+__pycache__/
