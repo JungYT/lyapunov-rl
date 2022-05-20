@@ -21,17 +21,18 @@ CONFIG = {
                 "omega": np.zeros((3, 1)),
             },
         },
-        "framework": "torch",
+        "framework": "tf2",
+        "eager_tracing": True,
         "num_gpus": 0,
-        "num_workers": 6,
-        "num_envs_per_worker": 10,
+        "num_workers": 5,
+        # "num_envs_per_worker": 10,
         # "lr": 0.0001,
-        # "gamma": 0.9,
+        # "gamma": 0.999,
         "lr": tune.grid_search([0.001, 0.0005, 0.0001]),
         "gamma": tune.grid_search([0.9, 0.99, 0.999]),
     },
     "stop": {
-        "training_iteration": 2000,
+        "training_iteration": 1000,
     },
     "local_dir": "./ray_results",
     "checkpoint_freq": 100,
@@ -39,7 +40,7 @@ CONFIG = {
 }
 
 def debug():
-    env = Env(CONFIG['env_config'])
+    env = Env(CONFIG['config']['env_config'])
     obs = env.reset()
     while True:
         action = np.array([1, 1, 1, 1])

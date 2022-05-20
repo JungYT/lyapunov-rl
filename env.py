@@ -12,7 +12,7 @@ class Env(BaseEnv, gym.Env):
         super().__init__(**env_config["sim"])
         self.plant = Multicopter(**env_config["init"])
 
-        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(12,))
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(15,))
         self.action_space = spaces.Box(
             low=np.float32(self.plant.rotorf_min),
             high=np.float32(self.plant.rotorf_max),
@@ -37,16 +37,18 @@ class Env(BaseEnv, gym.Env):
             )),
         )
 
-        self.P = np.diag([1, 1, 1, 1])
-        self.Q = np.diag(12*[1])
-        self.R = np.diag([1, 1, 1, 1])
+        self.P = np.diag([10, 10, 10, 1])
+        self.Q = np.diag([
+            40, 40, 40, 5, 5, 5, 0, 0, 0, 0, 0, 0, 3, 3, 3
+        ])
+        self.R = np.diag([2, 2, 2, 2])
 
     def step(self, action):
         obs = self.observe()
         *_, done = self.update(action=action)
         next_obs = self.observe()
         reward = self.get_reward(obs, next_obs, action)
-        done = done or not self.state_space.contains(next_obs)
+        # done = done or not self.state_space.contains(next_obs)
         return next_obs, reward, done, {}
 
     def set_dot(self, t, action):
@@ -61,7 +63,12 @@ class Env(BaseEnv, gym.Env):
     def observe(self):
         pos, vel, R, omega = self.plant.observe_list()
         euler = rot.from_matrix(R).as_euler("ZYX")[::-1]
-        obs = np.hstack((pos.ravel(), vel.ravel(), euler, omega.ravel()))
+        attitude = np.array([
+            np.cos(euler[0]), np.sin(euler[0]),
+            np.cos(euler[1]), np.sin(euler[1]),
+            np.cos(euler[2]), np.sin(euler[2])
+        ])
+        obs = np.hstack((pos.ravel(), vel.ravel(), attitude, omega.ravel()))
         return np.float32(obs)
 
     def get_reward(self, obs, next_obs, action):
@@ -90,15 +97,9 @@ class Env(BaseEnv, gym.Env):
 
     def lyapunov(self, obs):
         pos = obs[0:3]
-        euler = obs[6:9]
-        x = np.hstack((pos, euler[2]))
+        omega = obs[12:15]
+        # attitude = obs[6:12]
+        x = np.hstack((pos, omega[2]))
         V = x.T @ self.P @ x
         return V
         
-
-        
-
-
-
-
-
