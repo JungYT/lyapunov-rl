@@ -54,12 +54,38 @@ class Multicopter(BaseEnv):
 
     def set_dot(self, t, rotorfs_cmd):
         pos, vel, R, omega = self.observe_list()
-        rotorfs = self.set_valid(t, rotorfs_cmd)
+        rotorfs = self.saturate(t, rotorfs_cmd)
         dots = self.deriv(pos, vel, R, omega, rotorfs)
         self.pos.dot, self.vel.dot, self.R.dot, self.omega.dot = dots
         return dict(rotorfs=rotorfs)
 
-    def set_valid(self, t, rotorfs_cmd):
+    def saturate(self, t, rotorfs_cmd):
         rotorfs = np.clip(rotorfs_cmd, self.rotorf_min, self.rotorf_max)
         return self.Lambda @ rotorfs
+
+
+class Line(BaseEnv):
+    u_min = -3.
+    u_max = 3.
+
+    def __init__(self, pos, vel):
+        super().__init__()
+        self.pos = BaseSystem(pos)
+        self.vel = BaseSystem(vel)
+
+    def deriv(self, pos, vel, u):
+        dvel = u
+        dpos = vel
+        return dpos, dvel
+
+    def set_dot(self, t, action):
+        pos, vel = self.observe_list()
+        u = self.saturate(action)
+        dots = self.deriv(pos, vel, u)
+        self.pos.dot, self.vel.dot = dots
+
+    def saturate(self, action):
+        u = np.clip(action, self.u_min, self.u_max)
+        return u
+
 

@@ -5,10 +5,10 @@ from fym.core import BaseEnv
 from scipy.spatial.transform import Rotation as rot
 from numpy.linalg import norm
 
-from plant import Multicopter
+from plant import Multicopter, Line
 
 
-class Env(BaseEnv, gym.Env):
+class EnvMulticopter(BaseEnv, gym.Env):
     def __init__(self, env_config):
         super().__init__(**env_config["sim"])
         self.plant = Multicopter(**env_config["init"])
@@ -40,7 +40,7 @@ class Env(BaseEnv, gym.Env):
 
         self.P = np.diag([10, 10, 10, 10, 10, 10, 1])
         self.Q = np.diag([
-            10, 10, 10, 10, 10, 10, 1
+            10, 10, 10, 10, 10, 10, 1, 1, 1
         ])
         self.R = np.diag([2, 2, 2, 2])
 
@@ -59,7 +59,7 @@ class Env(BaseEnv, gym.Env):
         V = self.lyapunov(obs)
         
         return dict(t=t, **self.plant.observe_dict(), **rotorfs, lyapunov=V,
-                    obs=obs)
+                    obs=obs, rotorfs_cmd=rotorfs_cmd)
 
     def observe(self):
         pos, vel, R, omega = self.plant.observe_list()
@@ -108,3 +108,66 @@ class Env(BaseEnv, gym.Env):
         V = x.T @ self.P @ x
         return V
         
+
+class EnvLine(BaseEnv, gym.Env):
+    def __init__(self, env_config):
+        super().__init__(**env_config["sim"])
+        self.plant = Line(**env_config["init"])
+
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(2,))
+        self.action_space = spaces.Box(
+            low=np.float32(self.plant.u_min),
+            high=np.float32(self.plant.u_max),
+            shape=(1,),
+        )
+        self.state_space = spaces.Box(
+            low=np.float32(np.hstack([-10, -20])),
+            high=np.float32(np.hstack([10, 20])),
+        )
+        self.P = np.diag([10, 1])
+        self.Q = np.diag([10, 1])
+        self.R = np.diag([1])
+
+    def step(self, action):
+        obs = self.observe()
+        *_, done = self.update(action=action)
+        next_obs = self.observe()
+        reward = self.get_reward(obs, next_obs, action)
+        return next_obs, reward, done, {}
+
+    def set_dot(self, t, action):
+        u = np.float64(action[:, None])
+        self.plant.set_dot(t, u)
+        obs = self.observe()
+        V = self.lyapunov(obs)
+        return dict(t=t, **self.plant.observe_dict(), lyapunov=V, u=action)
+
+    def observe(self):
+        pos, vel = self.plant.observe_list()
+        obs = np.hstack((pos.ravel(), vel.ravel()))
+        return np.float32(obs)
+
+    def get_reward(self, obs, next_obs, action):
+        V = self.lyapunov(obs)
+        V_next = self.lyapunov(next_obs)
+        del_V = V_next - V
+        exp = np.exp(-obs.T @ self.Q @ obs - action.T @ self.R @ action)
+        if (del_V<=-1e-7 and V_next>1e-6) or (del_V<=0  and V_next<=1e-6):
+            reward = -1 + exp
+        else:
+            reward = -10 + exp
+        return np.float32(reward)
+        
+    def reset(self, random=True):
+        super().reset()
+        if random:
+            sample = np.float64(self.state_space.sample())
+            self.plant.pos.state = np.vstack([sample[0]])
+            self.plant.vel.state = np.vstack([sample[1]])
+        return self.observe()
+
+    def lyapunov(self, obs):
+        pos, vel = obs
+        x = np.hstack((pos, vel))
+        V = x.T @ self.P @ x
+        return V
