@@ -16,7 +16,7 @@ CONFIG = {
         "env_config": {
             "sim": {
                 "dt": 0.01,
-                "max_t": 3.,
+                "max_t": 5.,
             },
             "init": {
                 "pos": np.zeros((3, 1)),
@@ -32,13 +32,13 @@ CONFIG = {
         "num_gpus": 0,
         "num_workers": 5,
         # "num_envs_per_worker": 10,
-        "lr": 0.0001,
-        "gamma": 0.99,
-        # "lr": tune.grid_search([0.001, 0.0005, 0.0001]),
-        # "gamma": tune.grid_search([0.9, 0.99, 0.999]),
+        # "lr": 0.0001,
+        # "gamma": 0.99,
+        "lr": tune.grid_search([0.001, 0.0005, 0.0001]),
+        "gamma": tune.grid_search([0.9, 0.99, 0.999]),
     },
     "stop": {
-        "training_iteration": 10000,
+        "training_iteration": 2000,
     },
     "local_dir": "./ray_results/quadcopter",
     "checkpoint_freq": 100,
@@ -72,8 +72,8 @@ def sim(checkpoint_path):
     data_path = Path(parent_path, "sim_data.h5")
 
     CONFIG['explore'] = False
-    CONFIG['config']['env_config']['sim']['max_t'] = 5.
-    agent = ppo.PPOTrainer(config=CONFIG['config'], env=Env)
+    CONFIG['config']['env_config']['sim']['max_t'] = 10.
+    agent = ppo.PPOTrainer(config=CONFIG['config'], env=EnvMulticopter)
     agent.restore(checkpoint_path)
 
     env = EnvMulticopter(CONFIG['config']['env_config'])
@@ -118,11 +118,13 @@ def plot(sim_data_path):
     plt.rcParams.update(tex_fonts)
     sim_data = fym.logging.load(sim_data_path)
     time = sim_data['t']
+    pos = sim_data['pos'].ravel()
+    vel = sim_data['vel'].ravel()
     R = sim_data['R']
     euler = rot.from_matrix(R).as_euler("ZYX")[::-1] * 180/np.pi
     omega = sim_data['omega']
     rotorfs = sim_data['rotorfs']
-    rotorfs_cmd = sim_data['rotorfs_cmd']
+    # rotorfs_cmd = sim_data['rotorfs_cmd']
 
     fig, ax = plt.subplots(3, 2)
     ax[0][0].plot(time, euler[:,0])
@@ -175,14 +177,14 @@ def plot(sim_data_path):
 
 
 if __name__ == "__main__":
-    # main()
+    main()
     # debug()
 
-    logdir = './ray_results/quadcopter/PPOTrainer_2022-05-24_01-23-32/PPOTrainer_quadcopter_b00e0_00000_0_2022-05-24_01-23-32/checkpoint_010000/'
-    checkpoint_path = Path(logdir, 'checkpoint-10000')
-    # evaluate([[str(checkpoint_path), 0]])
-    sim_data_path = Path(logdir, 'sim_data.h5')
-    plot(sim_data_path)
+    # logdir = './ray_results/quadcopter/PPOTrainer_2022-05-24_17-07-26/PPOTrainer_quadcopter_8ca97_00000_0_2022-05-24_17-07-26/checkpoint_010000/'
+    # checkpoint_path = Path(logdir, 'checkpoint-10000')
+    # # evaluate([[str(checkpoint_path), 0]])
+    # sim_data_path = Path(logdir, 'sim_data.h5')
+    # plot(sim_data_path)
 
 
     

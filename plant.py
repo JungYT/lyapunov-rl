@@ -65,8 +65,8 @@ class Multicopter(BaseEnv):
 
 
 class Line(BaseEnv):
-    u_min = -3.
-    u_max = 3.
+    u_min = -10.
+    u_max = 10.
 
     def __init__(self, pos, vel):
         super().__init__()

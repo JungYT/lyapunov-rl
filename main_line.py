@@ -16,7 +16,7 @@ CONFIG = {
         "env_config": {
             "sim": {
                 "dt": 0.01,
-                "max_t": 10.,
+                "max_t": 5.,
             },
             "init": {
                 "pos": np.vstack([5.]),
@@ -28,13 +28,13 @@ CONFIG = {
         "num_gpus": 0,
         "num_workers": 5,
         # "num_envs_per_worker": 10,
-        # "lr": 0.0001,
-        # "gamma": 0.99,
-        "lr": tune.grid_search([0.001, 0.0005, 0.0001]),
-        "gamma": tune.grid_search([0.9, 0.99, 0.999]),
+        "lr": 0.0001,
+        "gamma": 0.9,
+        # "lr": tune.grid_search([0.001, 0.0005, 0.0001]),
+        # "gamma": tune.grid_search([0.9, 0.99, 0.999]),
     },
     "stop": {
-        "training_iteration": 1000,
+        "training_iteration": 2000,
     },
     "local_dir": "./ray_results/line",
     "checkpoint_freq": 100,
@@ -68,8 +68,8 @@ def sim(checkpoint_path):
     data_path = Path(parent_path, "sim_data.h5")
 
     CONFIG['explore'] = False
-    CONFIG['config']['env_config']['sim']['max_t'] = 5.
-    agent = ppo.PPOTrainer(config=CONFIG['config'], env=Env)
+    # CONFIG['config']['env_config']['sim']['max_t'] = 5.
+    agent = ppo.PPOTrainer(config=CONFIG['config'], env=EnvLine)
     agent.restore(checkpoint_path)
 
     env = EnvLine(CONFIG['config']['env_config'])
