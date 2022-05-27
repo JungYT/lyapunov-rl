@@ -50,7 +50,10 @@ def debug():
     obs = env.reset()
     while True:
         action = np.array([1, 1, 1, 1])
-        obs, reward, done, _ = env.step(action)
+        obs, reward, done, info = env.step(action)
+        print(info['x'])
+        print(info['t'])
+        print(done)
         if done:
             break
     env.close()
@@ -177,8 +180,8 @@ def plot(sim_data_path):
 
 
 if __name__ == "__main__":
-    main()
-    # debug()
+    # main()
+    debug()
 
     # logdir = './ray_results/quadcopter/PPOTrainer_2022-05-24_17-07-26/PPOTrainer_quadcopter_8ca97_00000_0_2022-05-24_17-07-26/checkpoint_010000/'
     # checkpoint_path = Path(logdir, 'checkpoint-10000')

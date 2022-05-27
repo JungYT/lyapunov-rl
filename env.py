@@ -25,7 +25,7 @@ class EnvMulticopter(BaseEnv, gym.Env):
                 [
                     [-10, -10, -10],
                     [-20, -20, -20],
-                    np.deg2rad([-angle_lim, -angle_lim, -360]),
+                    np.deg2rad([-angle_lim, -angle_lim, -180]),
                     # [np.cos(angle_lim), -np.sin(angle_lim), 
                     #  np.cos(angle_lim), -np.sin(angle_lim), 
                     #  -1, -1],
@@ -39,7 +39,7 @@ class EnvMulticopter(BaseEnv, gym.Env):
                     # [1, np.sin(angle_lim), 
                     #  1, np.sin(angle_lim), 
                     #  1, 1],
-                    np.deg2rad([angle_lim, angle_lim, 360]),
+                    np.deg2rad([angle_lim, angle_lim, 180]),
                     [20, 20, 20],
                 ]
             )),
@@ -56,8 +56,9 @@ class EnvMulticopter(BaseEnv, gym.Env):
         *_, done = self.update(action=action)
         next_obs = self.observe()
         reward = self.get_reward(obs, next_obs, action)
-        done = done or not self.check_bound()
-        return next_obs, reward, done, {}
+        done = done or not self.check_contain()
+        info = {'x': self.check_contain(), 't': self.clock.get()}
+        return next_obs, reward, done, info
 
     def set_dot(self, t, action):
         rotorfs_cmd = np.float64(action[:, None])
@@ -97,7 +98,7 @@ class EnvMulticopter(BaseEnv, gym.Env):
         return self.observe()
 
     def linear_comb(self, obs, next_obs, action):
-        if self.check_bound():
+        if self.check_contain():
             pos = obs[0:3]
             vel = obs[3:6]
             omega = obs[12:]
@@ -109,7 +110,7 @@ class EnvMulticopter(BaseEnv, gym.Env):
         return reward
 
     def lyapunov_guided(self, obs, next_obs, action):
-        if self.check_bound():
+        if self.check_contain():
             V = self.lyapunov(obs)
             V_next = self.lyapunov(next_obs)
             del_V = V_next - V
@@ -130,11 +131,11 @@ class EnvMulticopter(BaseEnv, gym.Env):
         V = x.T @ self.P @ x
         return V
 
-    def check_bound(self):
+    def check_contain(self):
         pos, vel, R, omega = self.plant.observe_list()
         euler = rot.from_matrix(R).as_euler("ZYX")[::-1]
         state = np.hstack((pos.ravel(), vel.ravel(), euler, omega.ravel()))
-        return self.state_space.contains(state)
+        return self.state_space.contains(np.float32(state))
         
 
 class EnvLine(BaseEnv, gym.Env):
