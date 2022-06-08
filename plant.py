@@ -67,7 +67,6 @@ class Multicopter(BaseEnv):
 class Line(BaseEnv):
     u_min = -10.
     u_max = 10.
-
     def __init__(self, pos, vel):
         super().__init__()
         self.pos = BaseSystem(pos)
@@ -89,3 +88,48 @@ class Line(BaseEnv):
         return u
 
 
+class ThreeDOF(BaseEnv):
+    V = 1
+    u_min = -3
+    u_max = 3
+    def __init__(self, pos, yaw):
+        super().__init__()
+        self.pos = BaseSystem(pos)
+        self.yaw = BaseSystem(yaw)
+
+    def set_dot(self, t, u):
+        yaw = self.yaw.state.squeeze()
+        self.pos.dot = np.vstack((
+            self.V * np.cos(yaw),
+            self.V * np.sin(yaw)
+        ))
+        self.yaw.dot = u / self.V
+
+
+class SecondOrder(BaseEnv):
+    freq = 100
+    damp = 0.707
+    def __init__(self, u_min=None, u_max=None):
+        super().__init__()
+        self.x = BaseSystem(np.vstack([0]))
+        self.xdot = BaseSystem(np.vstack([0]))
+        self.u_min = u_min
+        self.u_max = u_max
+
+    def deriv(self, x, xdot, u):
+        dx = xdot
+        dxdot = -self.freq**2 * x - 2 * self.damp * self.freq * xdot \
+            + self.freq**2 * u
+        return dx, dxdot
+
+    def set_dot(self, t, u):
+        x, xdot = self.observe_list()
+        dots = self.deriv(x, xdot, u)
+        self.x.dot, self.xdot.dot = dots
+
+    def saturate(self, action):
+        if self.u_min or self.u_max:
+            u = np.clip(action, self.u_min, self.u_max)
+        else:
+            u = action
+        return u

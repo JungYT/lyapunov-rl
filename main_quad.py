@@ -8,7 +8,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 import fym
-from env import EnvMulticopter
+from env import EnvQuadHovering
 
 CONFIG = {
     "config": {
@@ -46,7 +46,7 @@ CONFIG = {
 }
 
 def debug():
-    env = EnvMulticopter(CONFIG['config']['env_config'])
+    env = EnvQuadHovering(CONFIG['config']['env_config'])
     obs = env.reset()
     while True:
         action = np.array([1, 1, 1, 1])
@@ -76,10 +76,10 @@ def sim(checkpoint_path):
 
     CONFIG['explore'] = False
     CONFIG['config']['env_config']['sim']['max_t'] = 10.
-    agent = ppo.PPOTrainer(config=CONFIG['config'], env=EnvMulticopter)
+    agent = ppo.PPOTrainer(config=CONFIG['config'], env=EnvQuadHovering)
     agent.restore(checkpoint_path)
 
-    env = EnvMulticopter(CONFIG['config']['env_config'])
+    env = EnvQuadHovering(CONFIG['config']['env_config'])
     env.logger = fym.Logger(data_path)
 
     obs = env.reset(random=False)
@@ -99,7 +99,7 @@ def evaluate(checkpoint_paths):
 def main():
     ray.shutdown()
     ray.init(ignore_reinit_error=True, log_to_driver=False)
-    register_env("quadcopter", lambda env_config: EnvMulticopter(env_config))
+    register_env("quadcopter", lambda env_config: EnvQuadHovering(env_config))
 
     checkpoint_paths = train()
     evaluate(checkpoint_paths)
